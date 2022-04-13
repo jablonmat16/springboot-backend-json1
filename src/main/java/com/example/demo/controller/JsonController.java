@@ -76,6 +76,8 @@ public class JsonController {
 		return updatedJson;
 	}
 	
+	//New recursive function////////////////////////////////////////////
+	
 	public List<Compare> func(String path, Type mapType, Gson g, List<Compare> compare, Map <String,MapDifference.ValueDifference<Object>> differences){
 		for(Map.Entry<String,MapDifference.ValueDifference<Object>> entry : differences.entrySet()) {
 			
@@ -160,6 +162,9 @@ public class JsonController {
 		MapDifference<String, Object> difference = Maps.difference(firstMap, secondMap);
 		Map <String,MapDifference.ValueDifference<Object>> differences = difference.entriesDiffering();
 		//System.out.printl
+		
+		//Below is the old non recursive method//////////////////////
+		
 //		Map<String, Object> firstMapLocal = g.fromJson(differences.get("policies").leftValue().toString(), mapType);
 //		Map<String, Object> secondMapLocal = g.fromJson(differences.get("policies").rightValue().toString(), mapType);
 //		MapDifference<String, Object> differenceLocal = Maps.difference(firstMapLocal, secondMapLocal);
