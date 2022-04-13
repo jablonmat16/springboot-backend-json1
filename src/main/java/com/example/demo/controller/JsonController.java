@@ -76,6 +76,68 @@ public class JsonController {
 		return updatedJson;
 	}
 	
+	public List<Compare> func(String path, Type mapType, Gson g, List<Compare> compare, Map <String,MapDifference.ValueDifference<Object>> differences){
+		for(Map.Entry<String,MapDifference.ValueDifference<Object>> entry : differences.entrySet()) {
+			
+			if(entry.getValue().leftValue().toString().charAt(0) == '[') {
+				String json1string = entry.getValue().leftValue().toString().substring(1, entry.getValue().leftValue().toString().length() - 1);
+				String[] ary = json1string.split("},"); 
+				for(int i = 0; i < ary.length; i++) {
+					Map<String, Object> firstMapLocal = g.fromJson(entry.getValue().leftValue().toString(), mapType);
+					Map<String, Object> secondMapLocal = g.fromJson(entry.getValue().rightValue().toString(), mapType);
+					MapDifference<String, Object> differenceLocal = Maps.difference(firstMapLocal, secondMapLocal);
+					Map <String,MapDifference.ValueDifference<Object>> differencesLocal = differenceLocal.entriesDiffering();
+					path = path + "/" + i;
+					if(!differencesLocal.isEmpty())
+						func(path, mapType, g, compare, differencesLocal);
+				}
+			}
+			else {
+				//if(entry.getValue().leftValue().toString().charAt(0) == '{') {
+					System.out.println(differences.toString());
+					System.out.println(entry.getValue().leftValue().toString());
+					System.out.println(entry.getValue().rightValue().toString());
+					if(entry.getValue().leftValue().toString().charAt(0) == '{') {
+						Map<String, Object> firstMapLocal = g.fromJson(entry.getValue().leftValue().toString(), mapType);
+						Map<String, Object> secondMapLocal = g.fromJson(entry.getValue().rightValue().toString(), mapType);
+						MapDifference<String, Object> differenceLocal = Maps.difference(firstMapLocal, secondMapLocal);
+						Map <String,MapDifference.ValueDifference<Object>> differencesLocal = differenceLocal.entriesDiffering();
+						System.out.println(differencesLocal.toString());
+						path = path + "/" + entry.getKey();
+						if(differencesLocal.size() >= 1 && differencesLocal.toString().charAt(0) == '{')
+							func(path, mapType, g, compare, differencesLocal);
+					}
+					else {
+						path = path + "/" +entry.getKey();
+						compare.add(new Compare());
+						if(entry.getValue().rightValue().toString() == "")
+							compare.get(compare.size()-1).setOp("add");
+						else
+							compare.get(compare.size()-1).setOp("replace");
+						compare.get(compare.size()-1).setPath(path);
+						compare.get(compare.size()-1).setValue(entry.getValue().leftValue());
+						path = path.substring(0, path.length() - entry.getKey().length() - 1);
+					}
+				//}
+				//else
+				//	path = path + "/" +entry.getKey();
+				
+			}
+			
+//			compare.add(new Compare());
+//			if(entry.getValue().rightValue().toString() == "")
+//				compare.get(compare.size()-1).setOp("add");
+//			else
+//				compare.get(compare.size()-1).setOp("replace");
+//			compare.get(compare.size()-1).setPath(path);
+//			compare.get(compare.size()-1).setValue(entry.getValue().leftValue());
+			//System.out.println(entry.getValue());
+		}
+		
+		
+		return compare;
+	}
+	
 	public List<Compare> getComparisons() {
 		List<Compare> compare = new ArrayList<>();
 		Gson g = new Gson();
@@ -85,109 +147,130 @@ public class JsonController {
 		JsonElement json1;
 		JsonElement json2;
 		String temp;
-		if(!Objects.equals(json.get(0).getRabbitVersion(), json.get(1).getRabbitVersion())) {
-			temp = json.get(1).getRabbitVersion() == null ? "add" : "replace";
-			compare.add(new Compare());
-			compare.get(compare.size()-1).setOp(temp);
-			compare.get(compare.size()-1).setPath("/rabbit_version");
-			compare.get(compare.size()-1).setPath2(".rabbit_version");
-			compare.get(compare.size()-1).setValue(json.get(0).getRabbitVersion());
-		}		
-		
-		//Policies, Queues, Exchanges, and Bindings
-		for(int x = 1; x <= 4; x++) {
-			switch(x) {
-				case 1:	len1 = json.get(0).getPolicies().length;
-						len2 = json.get(1).getPolicies().length;
-						break;
-				case 2: len1 = json.get(0).getQueues().length;
-						len2 = json.get(1).getQueues().length;
-						break;
-				case 3: len1 = json.get(0).getExchanges().length;
-						len2 = json.get(1).getExchanges().length;
-						break;
-				case 4: len1 = json.get(0).getBindings().length;
-						len2 = json.get(1).getBindings().length;
-						break;
-				default:len1 = 0;
-						len2 = 0;
-						break;
-			}
-			for(int i = 0; i < Math.min(len1, len2); i++) {
-				if(x == 1) {
-					json1 = g.toJsonTree(json.get(0).getPolicies()[i]);
-					json2 = g.toJsonTree(json.get(1).getPolicies()[i]);
-				}
-				else if(x == 2) {
-					json1 = g.toJsonTree(json.get(0).getQueues()[i]);
-					json2 = g.toJsonTree(json.get(1).getQueues()[i]);
-				}
-				else if (x == 3) {
-					json1 = g.toJsonTree(json.get(0).getExchanges()[i]);
-					json2 = g.toJsonTree(json.get(1).getExchanges()[i]);
-				}
-				else {
-					json1 = g.toJsonTree(json.get(0).getBindings()[i]);
-					json2 = g.toJsonTree(json.get(1).getBindings()[i]);
-				}
-				Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
-				Map<String, Object> firstMap = g.fromJson(json1.toString(), mapType);
-				Map<String, Object> secondMap = g.fromJson(json2.toString(), mapType);
-				MapDifference<String, Object> difference = Maps.difference(firstMap, secondMap);
-				Map <String,MapDifference.ValueDifference<Object>> differences = difference.entriesDiffering();
-				System.out.println(differences);
-				//system
-				Iterator<Map.Entry<String,MapDifference.ValueDifference<Object>>> itr = differences.entrySet().iterator();
-				while(itr.hasNext()) {
-					Map.Entry<String,MapDifference.ValueDifference<Object>> entry = itr.next();
-					compare.add(new Compare());
-					compare.get(compare.size()-1).setOp("replace");
-					if(x == 1) {
-						compare.get(compare.size()-1).setPath("/policies/" + i + "/" + entry.getKey());
-						compare.get(compare.size()-1).setPath2(".policies[" + i + "]." + entry.getKey());
-					}
-					else if(x == 2) {
-						compare.get(compare.size()-1).setPath("/queues/" + i + "/" + entry.getKey());
-						compare.get(compare.size()-1).setPath2(".queues[" + i + "]." + entry.getKey());
-					}
-					else if(x == 3) {
-						compare.get(compare.size()-1).setPath("/exchanges/" + i + "/" + entry.getKey());
-						compare.get(compare.size()-1).setPath2(".exchanges[" + i + "]." + entry.getKey());
-					}
-					else {
-						compare.get(compare.size()-1).setPath("/bindings/" + i + "/" + entry.getKey());
-						compare.get(compare.size()-1).setPath2(".bindings[" + i + "]." + entry.getKey());
-					}
-					compare.get(compare.size()-1).setValue(entry.getValue().leftValue());
-				}
-			}
-			int lenQ = Math.max(len1, len2) - Math.min(len1, len2);
-			
-			for(int i = Math.min(len1, len2); i < lenQ; i++) {
-				compare.add(new Compare());
-				compare.get(compare.size()-1).setOp("add");
-				if(x == 1) {
-					compare.get(compare.size()-1).setPath("/policies/" + i);
-					compare.get(compare.size()-1).setPath2(".policies" + "[" + i + "]");
-					compare.get(compare.size()-1).setValue(json.get(0).getPolicies()[i]);
-				}
-				else if(x == 2) {
-					compare.get(compare.size()-1).setPath("/queues/" + i);
-					compare.get(compare.size()-1).setPath2(".queues" + "[" + i + "]");
-					compare.get(compare.size()-1).setValue(json.get(0).getQueues()[i]);
-				}
-				else if(x == 3) {
-					compare.get(compare.size()-1).setPath("/exchanges/" + i);
-					compare.get(compare.size()-1).setPath2(".exchanges" + "[" + i + "]");
-					compare.get(compare.size()-1).setValue(json.get(0).getExchanges()[i]);
-				}
-				else {
-					compare.get(compare.size()-1).setPath("/bindings/" + i);
-					compare.get(compare.size()-1).setPath2(".bindings" + "[" + i + "]");
-					compare.get(compare.size()-1).setValue(json.get(0).getBindings()[i]);
-				}
-			}
-		}
+		String path = "";
+		json1 = g.toJsonTree(json.get(0));
+		json2 = g.toJsonTree(json.get(1));
+		String test = "{\"rabbit_version\":\"3.8.11\",\"policies\":{\"vhost\":\"QLAB02\",\"name\":\"HA_Mirror\",\"pattern\"\r\n"
+				+ ":\"^(?!logQueue).*$\",\"apply-to\":\"queues\",\"definition\":{\"ha-mode\":\"exactly\",\"ha-params\":2,\"ha-promote-on-failure\":\"always\",\"ha-promote-on-shutdown\":\"always\",\"ha-syncmode\":\"automatic\",\"queuemode\":\"lazy\"},\"priority\":99}}";
+		String test2 = "{\"rabbit_version\":\"3.8.11\",\"policies\":{\"vhost\":\"ILAB02\",\"name\":\"HA_Mirror\",\"pattern\":\r\n"
+				+ "\"^(?!logQueue).*$\",\"apply-to\":\"queues\",\"definition\":{\"ha-mode\":\"exactly\",\"ha-params\":3,\"ha-promote-on-failure\":\"never\",\"ha-promote-on-shutdown\":\"always\",\"ha-sync-mode\":\"automatic\",\"queuemode\":\"lazy\"},\"priority\":99}}";
+		Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+		Map<String, Object> firstMap = g.fromJson(test, mapType);
+		Map<String, Object> secondMap = g.fromJson(test2, mapType);
+		MapDifference<String, Object> difference = Maps.difference(firstMap, secondMap);
+		Map <String,MapDifference.ValueDifference<Object>> differences = difference.entriesDiffering();
+		//System.out.printl
+//		Map<String, Object> firstMapLocal = g.fromJson(differences.get("policies").leftValue().toString(), mapType);
+//		Map<String, Object> secondMapLocal = g.fromJson(differences.get("policies").rightValue().toString(), mapType);
+//		MapDifference<String, Object> differenceLocal = Maps.difference(firstMapLocal, secondMapLocal);
+//		Map <String,MapDifference.ValueDifference<Object>> differencesLocal = differenceLocal.entriesDiffering();
+		func(path, mapType, g, compare, differences);
+		//String[] ary = differences.get("queues").leftValue().toString().split("},"); 
+		//System.out.println(differences.get("queues").leftValue().toString());
+		//System.out.println(ary[0]);
+//		if(!Objects.equals(json.get(0).getRabbitVersion(), json.get(1).getRabbitVersion())) {
+//			temp = json.get(1).getRabbitVersion() == null ? "add" : "replace";
+//			compare.add(new Compare());
+//			compare.get(compare.size()-1).setOp(temp);
+//			compare.get(compare.size()-1).setPath("/rabbit_version");
+//			compare.get(compare.size()-1).setPath2(".rabbit_version");
+//			compare.get(compare.size()-1).setValue(json.get(0).getRabbitVersion());
+//		}		
+//		
+//		//Policies, Queues, Exchanges, and Bindings
+//		for(int x = 1; x <= 4; x++) {
+//			switch(x) {
+//				case 1:	len1 = json.get(0).getPolicies().length;
+//						len2 = json.get(1).getPolicies().length;
+//						break;
+//				case 2: len1 = json.get(0).getQueues().length;
+//						len2 = json.get(1).getQueues().length;
+//						break;
+//				case 3: len1 = json.get(0).getExchanges().length;
+//						len2 = json.get(1).getExchanges().length;
+//						break;
+//				case 4: len1 = json.get(0).getBindings().length;
+//						len2 = json.get(1).getBindings().length;
+//						break;
+//				default:len1 = 0;
+//						len2 = 0;
+//						break;
+//			}
+//			for(int i = 0; i < Math.min(len1, len2); i++) {
+//				if(x == 1) {
+//					json1 = g.toJsonTree(json.get(0).getPolicies()[i]);
+//					json2 = g.toJsonTree(json.get(1).getPolicies()[i]);
+//				}
+//				else if(x == 2) {
+//					json1 = g.toJsonTree(json.get(0).getQueues()[i]);
+//					json2 = g.toJsonTree(json.get(1).getQueues()[i]);
+//				}
+//				else if (x == 3) {
+//					json1 = g.toJsonTree(json.get(0).getExchanges()[i]);
+//					json2 = g.toJsonTree(json.get(1).getExchanges()[i]);
+//				}
+//				else {
+//					json1 = g.toJsonTree(json.get(0).getBindings()[i]);
+//					json2 = g.toJsonTree(json.get(1).getBindings()[i]);
+//				}
+//				Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
+//				Map<String, Object> firstMap = g.fromJson(json1.toString(), mapType);
+//				Map<String, Object> secondMap = g.fromJson(json2.toString(), mapType);
+//				MapDifference<String, Object> difference = Maps.difference(firstMap, secondMap);
+//				Map <String,MapDifference.ValueDifference<Object>> differences = difference.entriesDiffering();
+//				System.out.println(differences);
+//				//system
+//				Iterator<Map.Entry<String,MapDifference.ValueDifference<Object>>> itr = differences.entrySet().iterator();
+//				while(itr.hasNext()) {
+//					Map.Entry<String,MapDifference.ValueDifference<Object>> entry = itr.next();
+//					compare.add(new Compare());
+//					compare.get(compare.size()-1).setOp("replace");
+//					if(x == 1) {
+//						compare.get(compare.size()-1).setPath("/policies/" + i + "/" + entry.getKey());
+//						compare.get(compare.size()-1).setPath2(".policies[" + i + "]." + entry.getKey());
+//					}
+//					else if(x == 2) {
+//						compare.get(compare.size()-1).setPath("/queues/" + i + "/" + entry.getKey());
+//						compare.get(compare.size()-1).setPath2(".queues[" + i + "]." + entry.getKey());
+//					}
+//					else if(x == 3) {
+//						compare.get(compare.size()-1).setPath("/exchanges/" + i + "/" + entry.getKey());
+//						compare.get(compare.size()-1).setPath2(".exchanges[" + i + "]." + entry.getKey());
+//					}
+//					else {
+//						compare.get(compare.size()-1).setPath("/bindings/" + i + "/" + entry.getKey());
+//						compare.get(compare.size()-1).setPath2(".bindings[" + i + "]." + entry.getKey());
+//					}
+//					compare.get(compare.size()-1).setValue(entry.getValue().leftValue());
+//				}
+//			}
+//			int lenQ = Math.max(len1, len2) - Math.min(len1, len2);
+//			
+//			for(int i = Math.min(len1, len2); i < lenQ; i++) {
+//				compare.add(new Compare());
+//				compare.get(compare.size()-1).setOp("add");
+//				if(x == 1) {
+//					compare.get(compare.size()-1).setPath("/policies/" + i);
+//					compare.get(compare.size()-1).setPath2(".policies" + "[" + i + "]");
+//					compare.get(compare.size()-1).setValue(json.get(0).getPolicies()[i]);
+//				}
+//				else if(x == 2) {
+//					compare.get(compare.size()-1).setPath("/queues/" + i);
+//					compare.get(compare.size()-1).setPath2(".queues" + "[" + i + "]");
+//					compare.get(compare.size()-1).setValue(json.get(0).getQueues()[i]);
+//				}
+//				else if(x == 3) {
+//					compare.get(compare.size()-1).setPath("/exchanges/" + i);
+//					compare.get(compare.size()-1).setPath2(".exchanges" + "[" + i + "]");
+//					compare.get(compare.size()-1).setValue(json.get(0).getExchanges()[i]);
+//				}
+//				else {
+//					compare.get(compare.size()-1).setPath("/bindings/" + i);
+//					compare.get(compare.size()-1).setPath2(".bindings" + "[" + i + "]");
+//					compare.get(compare.size()-1).setValue(json.get(0).getBindings()[i]);
+//				}
+//			}
+//		}
 		return compare;
 	}
 	
