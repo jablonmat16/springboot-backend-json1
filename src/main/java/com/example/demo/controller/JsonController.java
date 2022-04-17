@@ -178,18 +178,19 @@ public class JsonController {
 			e.printStackTrace();
 		}
 		compare = target;
+		rabbitTemplate.convertAndSend("TestExchange", "test", target.toString());
 		return target;
 	}
 	
-	public void send() {
-	ArrayList<String> jsonList = getJsons();
-	String json = jsonList.get(0);
-	       try {
-	            ObjectMapper mapper = new ObjectMapper();
-	            String jsonString = mapper.writeValueAsString(json);
-	            rabbitTemplate.convertAndSend("TestExchange", "test", jsonString);
-	        } catch (JsonProcessingException e) {
-	            e.printStackTrace();
-	        }    
-    }
+// 	public void send() {
+// 	ArrayList<String> jsonList = getJsons();
+// 	String json = jsonList.get(0);
+// 	       try {
+// 	            ObjectMapper mapper = new ObjectMapper();
+// 	            String jsonString = mapper.writeValueAsString(json);
+// 	            rabbitTemplate.convertAndSend("TestExchange", "test", jsonString);
+// 	        } catch (JsonProcessingException e) {
+// 	            e.printStackTrace();
+// 	        }    
+//     }
 }
