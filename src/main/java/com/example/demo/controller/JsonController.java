@@ -18,7 +18,12 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
@@ -31,8 +36,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
 import com.flipkart.zjsonpatch.JsonPatch;
+import com.flipkart.zjsonpatch.JsonPatchApplicationException;
 import com.flipkart.zjsonpatch.DiffFlags;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
@@ -53,130 +60,10 @@ public class JsonController {
 	//NOTE TO TEAM: ASK ABOUT ADD OPERATION
 	//REPOSITORY FOR POSSIBLE FUTURE DATABASE
 
-	@GetMapping("/jsons")
-	public ArrayList<String> getAllJsons(){
-		return getJsons();
-	}
-
-	@GetMapping("/compare")
-	public List<Compare> getAllComparisons(){
-		JsonNode json = getComparisons();
-		ObjectMapper objectMapper = new ObjectMapper();
-		List<Compare> compare = null;
-		try {
-			compare = objectMapper.readValue(json.toString(), new TypeReference<List<Compare>>(){});
-		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return compare;
-	}
+	public JsonNode compare = createCompare();
 	
-	private static final Configuration configuration = Configuration.builder()
-		    .jsonProvider(new JacksonJsonNodeJsonProvider())
-		    .mappingProvider(new JacksonMappingProvider())
-		    .build();
-	
-	@GetMapping("/merged")
-	public JsonNode merge() {
-		String json = new Gson().toJson(getJsons().get(1));
-		JsonNode compare = getComparisons();
-		JsonNode updatedJson = JsonPath.using(configuration).parse(json).json();
-//		for(int i = 0; i < compare.size(); i++) {
-//			if(compare.get(i).getOp() == "replace")
-//				updatedJson = JsonPath.using(configuration).parse(updatedJson).set("$" + compare.get(i).getPath2(), compare.get(i).getValue()).json();
-//		}
-		return updatedJson;
-	}
-	
-	//New recursive function////////////////////////////////////////////
-	
-//	public List<Compare> func(String path, Type mapType, Gson g, List<Compare> compare, Map <String,MapDifference.ValueDifference<Object>> differences){
-//		for(Map.Entry<String,MapDifference.ValueDifference<Object>> entry : differences.entrySet()) {
-//			
-//			if(entry.getValue().leftValue().toString().charAt(0) == '[') {
-//				String json1string = entry.getValue().leftValue().toString().substring(1, entry.getValue().leftValue().toString().length() - 1);
-//				String[] ary = json1string.split("},"); 
-//				for(int i = 0; i < ary.length; i++) {
-//					Map<String, Object> firstMapLocal = g.fromJson(entry.getValue().leftValue().toString(), mapType);
-//					Map<String, Object> secondMapLocal = g.fromJson(entry.getValue().rightValue().toString(), mapType);
-//					MapDifference<String, Object> differenceLocal = Maps.difference(firstMapLocal, secondMapLocal);
-//					Map <String,MapDifference.ValueDifference<Object>> differencesLocal = differenceLocal.entriesDiffering();
-//					path = path + "/" + i;
-//					if(!differencesLocal.isEmpty())
-//						func(path, mapType, g, compare, differencesLocal);
-//				}
-//			}
-//			else {
-//				//if(entry.getValue().leftValue().toString().charAt(0) == '{') {
-//					System.out.println(differences.toString());
-//					System.out.println(entry.getValue().leftValue().toString());
-//					System.out.println(entry.getValue().rightValue().toString());
-//					if(entry.getValue().leftValue().toString().charAt(0) == '{') {
-//						Map<String, Object> firstMapLocal = g.fromJson(entry.getValue().leftValue().toString(), mapType);
-//						Map<String, Object> secondMapLocal = g.fromJson(entry.getValue().rightValue().toString(), mapType);
-//						MapDifference<String, Object> differenceLocal = Maps.difference(firstMapLocal, secondMapLocal);
-//						Map <String,MapDifference.ValueDifference<Object>> differencesLocal = differenceLocal.entriesDiffering();
-//						System.out.println(differencesLocal.toString());
-//						path = path + "/" + entry.getKey();
-//						if(differencesLocal.size() >= 1 && differencesLocal.toString().charAt(0) == '{')
-//							func(path, mapType, g, compare, differencesLocal);
-//					}
-//					else {
-//						path = path + "/" +entry.getKey();
-//						compare.add(new Compare());
-//						if(entry.getValue().rightValue().toString() == "")
-//							compare.get(compare.size()-1).setOp("add");
-//						else
-//							compare.get(compare.size()-1).setOp("replace");
-//						compare.get(compare.size()-1).setPath(path);
-//						compare.get(compare.size()-1).setValue(entry.getValue().leftValue());
-//						path = path.substring(0, path.length() - entry.getKey().length() - 1);
-//					}
-//				//}
-				//else
-				//	path = path + "/" +entry.getKey();
-				
-//			}
-			
-//			compare.add(new Compare());
-//			if(entry.getValue().rightValue().toString() == "")
-//				compare.get(compare.size()-1).setOp("add");
-//			else
-//				compare.get(compare.size()-1).setOp("replace");
-//			compare.get(compare.size()-1).setPath(path);
-//			compare.get(compare.size()-1).setValue(entry.getValue().leftValue());
-			//System.out.println(entry.getValue());
-//		}
-		
-		
-//		return compare;
-//	}
-	
-	public JsonNode getComparisons() {
-		List<Compare> compare = new ArrayList<>();
-		Gson g = new Gson();
+	public static JsonNode createCompare() {
 		ArrayList<String> json = getJsons();
-//		int len1 = 0;
-//		int len2 = 0;
-//		JsonElement json1;
-//		JsonElement json2;
-//		String temp;
-//		String path = "";
-//		json1 = g.toJsonTree(json.get(0));
-//		json2 = g.toJsonTree(json.get(1));
-//		String test = "{\"rabbit_version\":\"3.8.11\",\"policies\":{\"vhost\":\"QLAB02\",\"name\":\"HA_Mirror\",\"pattern\"\r\n"
-//				+ ":\"^(?!logQueue).*$\",\"apply-to\":\"queues\",\"definition\":{\"ha-mode\":\"exactly\",\"ha-params\":2,\"ha-promote-on-failure\":\"always\",\"ha-promote-on-shutdown\":\"always\",\"ha-syncmode\":\"automatic\",\"queuemode\":\"lazy\"},\"priority\":99}}";
-//		String test2 = "{\"rabbit_version\":\"3.8.11\",\"policies\":{\"vhost\":\"ILAB02\",\"name\":\"HA_Mirror\",\"pattern\":\r\n"
-//				+ "\"^(?!logQueue).*$\",\"apply-to\":\"queues\",\"definition\":{\"ha-mode\":\"exactly\",\"ha-params\":3,\"ha-promote-on-failure\":\"never\",\"ha-promote-on-shutdown\":\"always\",\"ha-sync-mode\":\"automatic\",\"queuemode\":\"lazy\"},\"priority\":99}}";
-//		Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
-//		Map<String, Object> firstMap = g.fromJson(test, mapType);
-//		Map<String, Object> secondMap = g.fromJson(test2, mapType);
-//		MapDifference<String, Object> difference = Maps.difference(firstMap, secondMap);
-//		Map <String,MapDifference.ValueDifference<Object>> differences = difference.entriesDiffering();
 		
 		ObjectMapper mapper = new ObjectMapper();
 		
@@ -193,7 +80,7 @@ public class JsonController {
 			e.printStackTrace();
 		} 
 		
-		System.out.println(source);
+		//System.out.println(source);
 		
 		//System.out.println(jsons1);
 		JsonNode patch = null;
@@ -202,135 +89,44 @@ public class JsonController {
 		patch = JsonDiff.asJson(target, source, flags);
 		
 		target = JsonPatch.apply(patch, source);
-		
-		System.out.println(patch);
-		
-		//System.out.printl
-		
-		//Below is the old non recursive method//////////////////////
-		
-//		Map<String, Object> firstMapLocal = g.fromJson(differences.get("policies").leftValue().toString(), mapType);
-//		Map<String, Object> secondMapLocal = g.fromJson(differences.get("policies").rightValue().toString(), mapType);
-//		MapDifference<String, Object> differenceLocal = Maps.difference(firstMapLocal, secondMapLocal);
-//		Map <String,MapDifference.ValueDifference<Object>> differencesLocal = differenceLocal.entriesDiffering();
-		//func(path, mapType, g, compare, differences);
-		//String[] ary = differences.get("queues").leftValue().toString().split("},"); 
-		//System.out.println(differences.get("queues").leftValue().toString());
-		//System.out.println(ary[0]);
-//		if(!Objects.equals(json.get(0).getRabbitVersion(), json.get(1).getRabbitVersion())) {
-//			temp = json.get(1).getRabbitVersion() == null ? "add" : "replace";
-//			compare.add(new Compare());
-//			compare.get(compare.size()-1).setOp(temp);
-//			compare.get(compare.size()-1).setPath("/rabbit_version");
-//			compare.get(compare.size()-1).setPath2(".rabbit_version");
-//			compare.get(compare.size()-1).setValue(json.get(0).getRabbitVersion());
-//		}		
-//		
-//		//Policies, Queues, Exchanges, and Bindings
-//		for(int x = 1; x <= 4; x++) {
-//			switch(x) {
-//				case 1:	len1 = json.get(0).getPolicies().length;
-//						len2 = json.get(1).getPolicies().length;
-//						break;
-//				case 2: len1 = json.get(0).getQueues().length;
-//						len2 = json.get(1).getQueues().length;
-//						break;
-//				case 3: len1 = json.get(0).getExchanges().length;
-//						len2 = json.get(1).getExchanges().length;
-//						break;
-//				case 4: len1 = json.get(0).getBindings().length;
-//						len2 = json.get(1).getBindings().length;
-//						break;
-//				default:len1 = 0;
-//						len2 = 0;
-//						break;
-//			}
-//			for(int i = 0; i < Math.min(len1, len2); i++) {
-//				if(x == 1) {
-//					json1 = g.toJsonTree(json.get(0).getPolicies()[i]);
-//					json2 = g.toJsonTree(json.get(1).getPolicies()[i]);
-//				}
-//				else if(x == 2) {
-//					json1 = g.toJsonTree(json.get(0).getQueues()[i]);
-//					json2 = g.toJsonTree(json.get(1).getQueues()[i]);
-//				}
-//				else if (x == 3) {
-//					json1 = g.toJsonTree(json.get(0).getExchanges()[i]);
-//					json2 = g.toJsonTree(json.get(1).getExchanges()[i]);
-//				}
-//				else {
-//					json1 = g.toJsonTree(json.get(0).getBindings()[i]);
-//					json2 = g.toJsonTree(json.get(1).getBindings()[i]);
-//				}
-//				Type mapType = new TypeToken<Map<String, Object>>(){}.getType();
-//				Map<String, Object> firstMap = g.fromJson(json1.toString(), mapType);
-//				Map<String, Object> secondMap = g.fromJson(json2.toString(), mapType);
-//				MapDifference<String, Object> difference = Maps.difference(firstMap, secondMap);
-//				Map <String,MapDifference.ValueDifference<Object>> differences = difference.entriesDiffering();
-//				System.out.println(differences);
-//				//system
-//				Iterator<Map.Entry<String,MapDifference.ValueDifference<Object>>> itr = differences.entrySet().iterator();
-//				while(itr.hasNext()) {
-//					Map.Entry<String,MapDifference.ValueDifference<Object>> entry = itr.next();
-//					compare.add(new Compare());
-//					compare.get(compare.size()-1).setOp("replace");
-//					if(x == 1) {
-//						compare.get(compare.size()-1).setPath("/policies/" + i + "/" + entry.getKey());
-//						compare.get(compare.size()-1).setPath2(".policies[" + i + "]." + entry.getKey());
-//					}
-//					else if(x == 2) {
-//						compare.get(compare.size()-1).setPath("/queues/" + i + "/" + entry.getKey());
-//						compare.get(compare.size()-1).setPath2(".queues[" + i + "]." + entry.getKey());
-//					}
-//					else if(x == 3) {
-//						compare.get(compare.size()-1).setPath("/exchanges/" + i + "/" + entry.getKey());
-//						compare.get(compare.size()-1).setPath2(".exchanges[" + i + "]." + entry.getKey());
-//					}
-//					else {
-//						compare.get(compare.size()-1).setPath("/bindings/" + i + "/" + entry.getKey());
-//						compare.get(compare.size()-1).setPath2(".bindings[" + i + "]." + entry.getKey());
-//					}
-//					compare.get(compare.size()-1).setValue(entry.getValue().leftValue());
-//				}
-//			}
-//			int lenQ = Math.max(len1, len2) - Math.min(len1, len2);
-//			
-//			for(int i = Math.min(len1, len2); i < lenQ; i++) {
-//				compare.add(new Compare());
-//				compare.get(compare.size()-1).setOp("add");
-//				if(x == 1) {
-//					compare.get(compare.size()-1).setPath("/policies/" + i);
-//					compare.get(compare.size()-1).setPath2(".policies" + "[" + i + "]");
-//					compare.get(compare.size()-1).setValue(json.get(0).getPolicies()[i]);
-//				}
-//				else if(x == 2) {
-//					compare.get(compare.size()-1).setPath("/queues/" + i);
-//					compare.get(compare.size()-1).setPath2(".queues" + "[" + i + "]");
-//					compare.get(compare.size()-1).setValue(json.get(0).getQueues()[i]);
-//				}
-//				else if(x == 3) {
-//					compare.get(compare.size()-1).setPath("/exchanges/" + i);
-//					compare.get(compare.size()-1).setPath2(".exchanges" + "[" + i + "]");
-//					compare.get(compare.size()-1).setValue(json.get(0).getExchanges()[i]);
-//				}
-//				else {
-//					compare.get(compare.size()-1).setPath("/bindings/" + i);
-//					compare.get(compare.size()-1).setPath2(".bindings" + "[" + i + "]");
-//					compare.get(compare.size()-1).setValue(json.get(0).getBindings()[i]);
-//				}
-//			}
-//		}
 		return patch;
 	}
 	
+	@GetMapping("/jsons")
+	public ArrayList<String> getAllJsons(){
+		return getJsons();
+	}
+
+	@GetMapping("/compare")
+	public JsonNode getAllComparisons(){
+		
+		return compare;
+	}
+	
+	//@PostMapping("/compare")
+	
+	private static final Configuration configuration = Configuration.builder()
+		    .jsonProvider(new JacksonJsonNodeJsonProvider())
+		    .mappingProvider(new JacksonMappingProvider())
+		    .build();
+	
+//	@GetMapping("/merged")
+//	public JsonNode merge() {
+//		String json = new Gson().toJson(getJsons().get(1));
+//		JsonNode compare = getComparisons();
+//		JsonNode updatedJson = JsonPath.using(configuration).parse(json).json();
+////		for(int i = 0; i < compare.size(); i++) {
+////			if(compare.get(i).getOp() == "replace")
+////				updatedJson = JsonPath.using(configuration).parse(updatedJson).set("$" + compare.get(i).getPath2(), compare.get(i).getValue()).json();
+////		}
+//		return updatedJson;
+//	}
+	
 	
 	//grabs json from git source and turns it into an object
-	private ArrayList<String> getJsons(){
+	private static ArrayList<String> getJsons(){
 		ArrayList<String> jsons = new ArrayList<String>();
 		RestTemplate restTemplate = new RestTemplate();
-//		MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter();
-//		mappingJackson2HttpMessageConverter.setSupportedMediaTypes(List.of(MediaType.TEXT_PLAIN));
-//		restTemplate.getMessageConverters().add(mappingJackson2HttpMessageConverter);
 		jsons.add(restTemplate.getForEntity
 		("https://raw.githubusercontent.com/jablonmat16/jsons/main/qlab.json", String.class).getBody());
 		jsons.add(restTemplate.getForEntity
@@ -340,12 +136,49 @@ public class JsonController {
 		return jsons;
 	}
 
-	@DeleteMapping("/compare{path}")
-	public ResponseEntity<Map<String, Boolean>> deleteCompare(@PathVariable String path){
-		System.out.println(path);
-		Map<String, Boolean> response = new HashMap<>();
-		response.put("deleted", Boolean.TRUE);
-		return ResponseEntity.ok(response);
+	@PostMapping("/compare")
+	public JsonNode updateEnvironment(@RequestBody JsonNode environment) {
+		compare = environment;
+		System.out.println(environment);
+		
+		List<Compare> updatedCompare = new ArrayList<>();
+		
+		ObjectMapper objectMapper = new ObjectMapper();
+		List<Compare> comparison = null;
+		try {
+			comparison = objectMapper.readValue(environment.toString(), new TypeReference<List<Compare>>(){});
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		for(int i = 0; i < comparison.size(); i++) {
+			if(comparison.get(i).isSelect()) {
+				updatedCompare.add(new Compare());
+				updatedCompare.get(updatedCompare.size()-1).setOp(comparison.get(i).getOp());
+				updatedCompare.get(updatedCompare.size()-1).setPath(comparison.get(i).getPath());
+				updatedCompare.get(updatedCompare.size()-1).setValue(comparison.get(i).getValue());
+			}
+		}
+		
+		ObjectMapper mapper = new ObjectMapper();
+		JsonNode returned = mapper.valueToTree(updatedCompare);
+		
+		System.out.println(returned.toString());
+		compare = returned;
+		JsonNode target = null;
+		try {
+			target = JsonPatch.apply(returned, mapper.readTree(getJsons().get(1)));
+		} catch (JsonProcessingException | JsonPatchApplicationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		compare = target;
+		return target;
 	}
 	
 	public void send() {
