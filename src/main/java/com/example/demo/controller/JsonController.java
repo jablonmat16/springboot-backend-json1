@@ -61,6 +61,7 @@ public class JsonController {
 	//REPOSITORY FOR POSSIBLE FUTURE DATABASE
 
 	public JsonNode compare = createCompare();
+	public JsonNode merged;
 	
 	public static JsonNode createCompare() {
 		ArrayList<String> json = getJsons();
@@ -69,6 +70,7 @@ public class JsonController {
 		
 		JsonNode source = null;
 		JsonNode target = null;
+		//JsonNode merged = null;
 		
 		String jsons1 = json.get(0);
 		String jsons2 = json.get(1);
@@ -76,6 +78,7 @@ public class JsonController {
 		try {
 			source = mapper.readTree(jsons1);
 			target = mapper.readTree(jsons2);
+			//merged = mapper.readTree("{\"rabbit_version\":\"3.8.11\",\"parameters\":[],\"policies\":[{\"vhost\":\"QLAB02\",\"name\":\"HA_Mirror\",\"pattern\":\"^(?!logQueue).*$\",\"apply-to\":\"queues\",\"definition\":{\"ha-mode\":\"exactly\",\"ha-params\":2,\"ha-promote-on-failure\":\"always\",\"ha-promote-on-shutdown\":\"always\",\"ha-sync-mode\":\"automatic\",\"queue-mode\":\"lazy\",\"hapromote-on-failure\":\"always\",\"ha-syncmode\":\"automatic\",\"queuemode\":\"lazy\"},\"priority\":99}],\"queues\":[{\"name\":\"OfflineProductCatalogQueueQLAB02\",\"durable\":true,\"auto_delete\":false,\"arguments\":{}},{\"name\":\"PushDealerDataQueueQLAB02\",\"durable\":true,\"auto_delete\":false,\"arguments\":{}},{\"name\":\"OfflineProductCatalogQueue\",\"durable\":true,\"auto_delete\":false,\"arguments\":{}},{\"name\":\"FAMS.ACCOUNTACTIVITY.ChangeMsisdnCorrelatorEvent.Q.QLAB02\",\"durable\":true,\"auto_delete\":false,\"arguments\":{\"x-queue-type\":\"classic\"}},{\"name\":\"FAMS.ACCOUNTACTIVITY.CHANGEMSISDNTOWCS.INBOUND.EVENT.Q.QLAB02\",\"durable\":true,\"auto_delete\":false,\"arguments\":{\"x-queue-type\":\"classic\"}},{\"name\":\"UpdateRateplanClassificationsQueue\",\"durable\":true,\"auto_delete\":false,\"arguments\":{}},{\"name\":\"PushDealerDataQueue\",\"durable\":true,\"auto_delete\":false,\"arguments\":{}},{\"name\":\"logQueue\",\"durable\":true,\"auto_delete\":false,\"arguments\":{}},{\"name\":\"UpdateRateplanClassificationsQueueQLAB02\",\"durable\":true,\"auto_delete\":false,\"arguments\":{}}],\"exchanges\":[{\"name\":\"FAMS.ACCOUNTACTIVITY.CHANGEMSISDNTOWCS.INBOUND.EVENT.E.QLAB02\",\"type\":\"direct\",\"durable\":true,\"auto_delete\":false,\"internal\":false,\"arguments\":{}},{\"name\":\"springCloudHystrixStream\",\"type\":\"topic\",\"durable\":true,\"auto_delete\":false,\"internal\":false,\"arguments\":{}},{\"name\":\"FAMS.ACCOUNTACTIVITY.ChangeMsisdnCorrelatorEvent.E.QLAB02\",\"type\":\"direct\",\"durable\":true,\"auto_delete\":false,\"internal\":false,\"arguments\":{}}],\"bindings\":[{\"source\":\"FAMS.ACCOUNTACTIVITY.CHANGEMSISDNTOWCS.INBOUND.EVENT.E.QLAB02\",\"destination\":\"FAMS.ACCOUNTACTIVITY.CHANGEMSISDNTOWCS.INBOUND.EVENT.Q.QLAB02\",\"destination_type\":\"queue\",\"routing_key\":\"RSP_CLOUD\",\"arguments\":{}},{\"source\":\"FAMS.ACCOUNTACTIVITY.ChangeMsisdnCorrelatorEvent.E.QLAB02\",\"destination\":\"FAMS.ACCOUNTACTIVITY.ChangeMsisdnCorrelatorEvent.Q.QLAB02\",\"destination_type\":\"queue\",\"routing_key\":\"\",\"arguments\":{}}]}");
 		} catch (JsonProcessingException e) {
 			e.printStackTrace();
 		} 
@@ -85,6 +88,7 @@ public class JsonController {
 		//System.out.println(jsons1);
 		JsonNode patch = null;
 		EnumSet<DiffFlags> flags = DiffFlags.dontNormalizeOpIntoMoveAndCopy().clone();
+		
 
 		patch = JsonDiff.asJson(target, source, flags);
 		
@@ -145,7 +149,7 @@ public class JsonController {
 		
 		ObjectMapper objectMapper = new ObjectMapper();
 		List<Compare> comparison = null;
-		try {
+		try {		
 			comparison = objectMapper.readValue(environment.toString(), new TypeReference<List<Compare>>(){});
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
@@ -177,20 +181,17 @@ public class JsonController {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		compare = target;
+		merged = target;
 		rabbitTemplate.convertAndSend("TestExchange", "test", target.toString());
-		return target;
+		return compare;
 	}
 	
-// 	public void send() {
-// 	ArrayList<String> jsonList = getJsons();
-// 	String json = jsonList.get(0);
-// 	       try {
-// 	            ObjectMapper mapper = new ObjectMapper();
-// 	            String jsonString = mapper.writeValueAsString(json);
-// 	            rabbitTemplate.convertAndSend("TestExchange", "test", jsonString);
-// 	        } catch (JsonProcessingException e) {
-// 	            e.printStackTrace();
-// 	        }    
-//     }
+	@GetMapping("/merged")
+	public JsonNode merge() {
+		return merged;
+	}
+	
+	public void send(JsonNode json) {
+		rabbitTemplate.convertAndSend("TestExchange", "test", json.toString());
+    }
 }
