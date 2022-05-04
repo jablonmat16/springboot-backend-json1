@@ -118,6 +118,7 @@ public class JsonController {
 		compare = returned;
 		JsonNode target = returned;
 		try {
+			//error occurs here/////////////
 			target = JsonPatch.apply(returned, mapper.readTree(getJsons().get(1)));
 		} catch (JsonProcessingException | JsonPatchApplicationException e) {
 			e.printStackTrace();
